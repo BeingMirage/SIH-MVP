@@ -1,9 +1,10 @@
 "use client";
 
-import { MapContainer, TileLayer, Rectangle, Popup, Polyline } from "react-leaflet";
+import { MapContainer, TileLayer, Popup, Polyline, useMap, useMapEvents } from "react-leaflet";
 import { mockRiskGrids, mockRoadCorridors } from "@/lib/mockData";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import L from "leaflet";
+import "leaflet.heat";
 
 // Fix leaflet icon issues
 delete (L.Icon.Default.prototype as any)._getIconUrl;
@@ -13,40 +14,65 @@ L.Icon.Default.mergeOptions({
   shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png",
 });
 
+function HeatmapLayer({ points }: { points: any[] }) {
+  const map = useMap();
+  useEffect(() => {
+    const heatPoints = points.map(p => [p.lat, p.lng, p.riskScore / 100]);
+    // @ts-ignore
+    const heatLayer = L.heatLayer(heatPoints, { 
+      radius: 60, 
+      blur: 50, 
+      maxZoom: 12,
+      max: 1.3, // Increases the threshold for "max" intensity, making the map generally more transparent/less red
+      gradient: { 
+        0.3: 'rgba(34, 197, 94, 0.4)',  // Green with low opacity
+        0.7: 'rgba(234, 179, 8, 0.6)',  // Yellow with medium opacity
+        1.0: 'rgba(239, 68, 68, 0.8)'   // Red with some opacity
+      }
+    }).addTo(map);
+    return () => { map.removeLayer(heatLayer); };
+  }, [map, points]);
+  return null;
+}
+
+function MapClickHandler({ setActiveCell, points }: { setActiveCell: any, points: any[] }) {
+  useMapEvents({
+    click(e) {
+      let closest = null;
+      let minDist = Infinity;
+      points.forEach(p => {
+        const dist = Math.sqrt(Math.pow(p.lat - e.latlng.lat, 2) + Math.pow(p.lng - e.latlng.lng, 2));
+        if (dist < minDist) {
+          minDist = dist;
+          closest = p;
+        }
+      });
+      // Allow click within ~0.03 deg radius
+      if (minDist < 0.03 && closest) {
+        setActiveCell(closest);
+      } else {
+        setActiveCell(null);
+      }
+    }
+  });
+  return null;
+}
+
 export default function MapComponent() {
   const [activeCell, setActiveCell] = useState<any>(null);
-  
-  const getRiskColor = (score: number) => {
-    if (score > 75) return "#ef4444"; // red-500
-    if (score > 40) return "#eab308"; // yellow-500
-    return "#22c55e"; // green-500
-  };
 
   return (
     <div className="flex h-[calc(100vh-100px)] gap-4">
       {/* Map Area */}
       <div className="flex-1 bg-slate-900 rounded-xl overflow-hidden border border-slate-800 shadow-2xl relative z-0">
-        <MapContainer center={[24.817, 93.936]} zoom={11} className="h-full w-full">
+        <MapContainer center={[24.817, 93.936]} zoom={10} className="h-full w-full">
           <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png?key=cb1_3s2i_1_b7ead487c66780fd3bc695da"
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+            attribution='Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
           />
           
-          {mockRiskGrids.map((cell) => (
-            <Rectangle
-              key={cell.id}
-              bounds={cell.bounds as any}
-              pathOptions={{ fillColor: getRiskColor(cell.riskScore), color: 'transparent', fillOpacity: 0.5 }}
-              eventHandlers={{
-                click: () => setActiveCell(cell),
-              }}
-            >
-              <Popup className="text-slate-900">
-                <p className="font-bold mb-1">Risk Score: {cell.riskScore}</p>
-                <p>Click for details</p>
-              </Popup>
-            </Rectangle>
-          ))}
+          <HeatmapLayer points={mockRiskGrids} />
+          <MapClickHandler setActiveCell={setActiveCell} points={mockRiskGrids} />
 
           {mockRoadCorridors.map((road) => (
             <Polyline 

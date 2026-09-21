@@ -1,25 +1,25 @@
 const generateGrid = () => {
   const grids = [];
-  const startLat = 24.700;
-  const startLng = 93.750;
   let id = 1;
 
-  for (let i = 0; i < 40; i++) {
-    for (let j = 0; j < 40; j++) {
-      const lat = startLat + i * 0.005;
-      const lng = startLng + j * 0.005;
+  // Generate 5000 random points for an organic heatmap
+  for (let i = 0; i < 5000; i++) {
+    const lat = 24.600 + Math.random() * 0.400;
+    const lng = 93.650 + Math.random() * 0.400;
       
       // Create some hotspots
       const distToHotspot1 = Math.sqrt(Math.pow(lat - 24.817, 2) + Math.pow(lng - 93.936, 2));
       const distToHotspot2 = Math.sqrt(Math.pow(lat - 24.805, 2) + Math.pow(lng - 93.900, 2));
       const distToHotspot3 = Math.sqrt(Math.pow(lat - 24.750, 2) + Math.pow(lng - 93.750, 2));
       const distToHotspot4 = Math.sqrt(Math.pow(lat - 24.850, 2) + Math.pow(lng - 93.850, 2));
+      const distToHotspot5 = Math.sqrt(Math.pow(lat - 24.950, 2) + Math.pow(lng - 93.750, 2));
       
       let baseRisk = 10;
-      if (distToHotspot1 < 0.04) baseRisk += (0.04 - distToHotspot1) * 2200;
-      if (distToHotspot2 < 0.03) baseRisk += (0.03 - distToHotspot2) * 3000;
-      if (distToHotspot3 < 0.05) baseRisk += (0.05 - distToHotspot3) * 1500;
-      if (distToHotspot4 < 0.03) baseRisk += (0.03 - distToHotspot4) * 2500;
+      if (distToHotspot1 < 0.08) baseRisk += (0.08 - distToHotspot1) * 1200;
+      if (distToHotspot2 < 0.06) baseRisk += (0.06 - distToHotspot2) * 1500;
+      if (distToHotspot3 < 0.07) baseRisk += (0.07 - distToHotspot3) * 1000;
+      if (distToHotspot4 < 0.05) baseRisk += (0.05 - distToHotspot4) * 1800;
+      if (distToHotspot5 < 0.09) baseRisk += (0.09 - distToHotspot5) * 900;
       
       const riskScore = Math.min(100, Math.max(0, baseRisk + (Math.random() * 20 - 10)));
       
@@ -27,10 +27,6 @@ const generateGrid = () => {
         id: id++,
         lat: lat,
         lng: lng,
-        bounds: [
-          [lat - 0.0025, lng - 0.0025],
-          [lat + 0.0025, lng + 0.0025]
-        ],
         riskScore: Math.round(riskScore),
         slope: Math.round(10 + Math.random() * 40),
         moisture: Math.round(40 + Math.random() * 50),
@@ -41,7 +37,6 @@ const generateGrid = () => {
           moisture: Number((Math.random() * 0.3).toFixed(2)) 
         },
       });
-    }
   }
   return grids;
 };
